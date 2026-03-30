@@ -1,0 +1,7 @@
+.env
+__pycache__/
+*.pyc
+market_service/data/latest_snapshot.json
+market_service/data/latest_event.json
+trade_memory/trade_state.json
+trade_memory/trade_journal.jsonl
