@@ -201,11 +201,14 @@ description: Use when user asks about TSLA options trading, position management,
 
 ## 数据读取
 
-skill 触发时静默尝试读取：
-1. `~/Zhiyuan/trading-system/market_service/data/latest_snapshot.json`
-2. `~/Zhiyuan/trading-system/market_service/data/latest_event.json`
-3. `~/Zhiyuan/trading-system/trade_memory/trade_state.json`
-4. `~/Zhiyuan/trading-system/trade_memory/trade_journal.jsonl`（最后 20 行）
+skill 触发时静默尝试读取以下文件。路径基于用户将仓库 clone 到的位置（默认 `~/tsla-options-war-room-skill`）：
+
+1. `~/tsla-options-war-room-skill/market_service/data/latest_snapshot.json`
+2. `~/tsla-options-war-room-skill/market_service/data/latest_event.json`
+3. `~/tsla-options-war-room-skill/trade_memory/trade_state.json`
+4. `~/tsla-options-war-room-skill/trade_memory/trade_journal.jsonl`（最后 20 行）
+
+如果上述路径读不到，再尝试备用路径 `~/Zhiyuan/trading-system/` 下的对应文件。
 
 文件不存在就跳过，不向用户报告"文件不存在"。如果关键信息缺失（比如不知道用户持仓状态），自然地问。
 

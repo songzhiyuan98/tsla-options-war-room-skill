@@ -14,29 +14,56 @@ Twelve Data API (WebSocket + REST)
   (价格监控 / K线拉取 / 结构计算 / 事件检测)
          |
          v
-  latest_snapshot.json          <-- 市场快照
+  latest_snapshot.json          <-- 市场快照（保存在本仓库 market_service/data/ 下）
   latest_event.json             <-- 关键事件
          |
          v
-  Trade Memory Layer            <-- 交易状态记忆
+  Trade Memory Layer            <-- 交易状态记忆（保存在本仓库 trade_memory/ 下）
   (持仓状态 / 交易日志)
          |
          v
-  Claude Skill: War Room        <-- 多 Agent 期权顾问团队
+  Claude Skill: War Room        <-- skill 文件安装到 ~/.claude/skills/，运行时读取本仓库的数据
   (方向判断 / 入场规划 / 风控)
          |
          v
   中文交易建议
 ```
 
+## 工作原理（两个位置）
+
+这个系统涉及两个位置，理解这一点很重要：
+
+**位置 1 -- 本仓库（你 clone 到的地方）**
+
+这是数据和脚本的工作目录。market service 在这里运行，生成的市场快照和交易记录也保存在这里。
+
+```
+~/tsla-options-war-room-skill/       <-- 你 clone 到的位置
+  market_service/data/               <-- 市场数据写在这里
+  trade_memory/                      <-- 交易状态保存在这里
+  run.py                             <-- 数据服务从这里启动
+```
+
+**位置 2 -- Claude Code skills 目录**
+
+Skill 文件（SKILL.md + agents/）需要复制到 Claude Code 的 skills 目录，这样 Claude 才能识别和加载。
+
+```
+~/.claude/skills/tsla-options-war-room/    <-- skill 安装位置
+  SKILL.md                                 <-- 主入口
+  agents/                                  <-- 10 个 agent 角色定义
+```
+
+**两者的关系**：skill 被触发后，会去位置 1（本仓库）读取市场数据和交易状态。如果数据服务没有运行或文件不存在，skill 会自动降级为手动模式（让你提供截图或数据）。
+
 ## 核心特点
 
-- **多 Agent 投委会**：10 个精英从业者角色（结构分析师、宏观顾问、多空辩论、期权策略、风控主管等），每个都有完整的专业背景和工作方法
-- **对抗式方向判断**：任何涉及 PUT/CALL 方向的问题，内部必须完成多空对抗分析后才给结论
-- **自然对话交互**：像跟一个资深交易顾问聊天，不像在读分析报告。系统内部复杂性对用户完全不可见
-- **渐进式展开**：简短问题给简短回答，需要深度分析时无缝展开完整报告
-- **实时数据驱动**：本地 market service 维护 TSLA/QQQ/SPY 实时数据，skill 自动读取
-- **交易状态记忆**：跨会话记住持仓状态、交易日志，支持连续持仓管理
+- **多 Agent 投委会**：10 个精英从业者角色，每个都有完整的专业背景和工作方法
+- **对抗式方向判断**：任何涉及 PUT/CALL 方向的问题，内部必须完成多空对抗后才给结论
+- **自然对话交互**：像跟一个资深交易顾问聊天，系统内部复杂性对用户完全不可见
+- **渐进式展开**：简短问题给简短回答，需要时无缝展开完整报告
+- **实时数据驱动**：本地 market service 维护 TSLA/QQQ/SPY 实时数据
+- **交易状态记忆**：跨会话记住持仓状态和交易日志
 
 ## 交易参数
 
@@ -52,52 +79,78 @@ Twelve Data API (WebSocket + REST)
 
 ## 快速开始
 
-### 1. 安装 Skill
-
-将 `SKILL.md` 和 `agents/` 目录复制到你的 Claude Code skills 目录：
+### 第一步：Clone 仓库
 
 ```bash
-cp -r SKILL.md agents/ ~/.claude/skills/tsla-options-war-room/
+# 建议 clone 到 home 目录下（skill 默认读这个路径）
+cd ~
+git clone https://github.com/songzhiyuan98/tsla-options-war-room-skill.git
+cd tsla-options-war-room-skill
 ```
 
-### 2. 配置数据服务
+如果你 clone 到了其他位置，需要修改 `SKILL.md` 中"数据读取"部分的路径。
+
+### 第二步：安装 Skill 到 Claude Code
 
 ```bash
-# 安装依赖
+# 创建 skill 目录并复制文件
+mkdir -p ~/.claude/skills/tsla-options-war-room
+cp SKILL.md ~/.claude/skills/tsla-options-war-room/
+cp -r agents/ ~/.claude/skills/tsla-options-war-room/
+```
+
+安装后 Claude Code 会自动识别这个 skill。
+
+### 第三步：配置数据服务
+
+```bash
+# 安装 Python 依赖
 pip3 install -r requirements.txt
 
-# 配置 API Key（需要 Twelve Data 账号，免费版即可）
+# 配置 Twelve Data API Key
 cp .env.example .env
-# 编辑 .env，填入你的 API key
+# 用你喜欢的编辑器打开 .env，填入 API key
+# 例如：nano .env
 ```
 
-### 3. 启动 Market Service
+Twelve Data 免费版即可，注册地址：https://twelvedata.com/
+
+### 第四步：启动数据服务
 
 ```bash
+# 在仓库目录下运行
+cd ~/tsla-options-war-room-skill
 python3 run.py
 ```
 
-服务会在后台运行，每 60 秒刷新 K 线数据，每 30 秒重建市场快照。盘中还会通过 WebSocket 接收实时价格。
+服务会常驻后台，每 60 秒刷新 K 线数据，每 30 秒重建市场快照。终端会显示实时状态：
 
-### 4. 使用 Skill
+```
+[Service] Starting TSLA Market Service...
+[REST] Candles refreshed at 10:15:30
+[Snapshot] 10:15:30 | TSLA $355.33 | regime: chop
+[Event] near_resistance: TSLA 接近阻力位 $356.86
+```
 
-在 Claude Code 中直接提问：
+### 第五步：开始使用
+
+在 Claude Code 中提问即可，skill 会自动触发：
 
 ```
 /tsla-options-war-room TSLA 现在能做期权吗？
 ```
 
-或者直接问 TSLA 相关问题，skill 会自动触发。
+或者直接问 TSLA 相关问题（不需要 slash command）。
 
-如果 market service 没有运行，也可以手动提供截图或数据。
+如果数据服务没启动，你也可以手动发截图给 skill 分析。
 
 ## 目录结构
 
 ```
 tsla-options-war-room-skill/
 |
-|-- SKILL.md                        # 主 Skill 入口（交互控制 + 工作流程 + 规则）
-|-- agents/                         # 10 个 Agent 角色定义
+|-- SKILL.md                        # 主 Skill 入口（复制到 ~/.claude/skills/）
+|-- agents/                         # Agent 角色定义（复制到 ~/.claude/skills/）
 |   |-- market-monitor.md           # 资深盘中市场情报员
 |   |-- clarifier.md                # 资深买方研究协调员
 |   |-- market-structure.md         # 高级技术结构分析师
@@ -109,36 +162,33 @@ tsla-options-war-room-skill/
 |   |-- risk-manager.md             # 交易风控主管
 |   |-- chief-advisor.md            # 首席投资顾问 / 委员会主席
 |
-|-- market_service/                 # 本地市场数据服务（Python）
-|   |-- config.py                   # 配置（API key、轮询间隔、文件路径）
+|-- market_service/                 # 本地市场数据服务（Python，在本仓库运行）
+|   |-- config.py                   # 配置
 |   |-- websocket_client.py         # Twelve Data WebSocket 实时价格
 |   |-- rest_client.py              # Twelve Data REST K线数据
-|   |-- structure_calculator.py     # 技术指标计算（趋势/支撑阻力/VWAP/ATR/RVOL）
+|   |-- structure_calculator.py     # 技术指标计算
 |   |-- snapshot_builder.py         # 市场快照构建器
 |   |-- event_engine.py             # 关键事件检测引擎
-|   |-- service.py                  # 主服务编排（WS + REST + 快照 + 事件）
-|   |-- data/                       # 运行时数据（gitignored）
-|       |-- latest_snapshot.json    # 最新市场快照
-|       |-- latest_event.json       # 最新检测事件
+|   |-- service.py                  # 主服务编排
+|   |-- data/                       # 运行时生成的数据（gitignored）
+|       |-- latest_snapshot.json    # skill 读取这个文件获取市场数据
+|       |-- latest_event.json       # skill 读取这个文件获取事件
 |
-|-- trade_memory/                   # 交易状态记忆层
+|-- trade_memory/                   # 交易状态（在本仓库保存）
 |   |-- state_manager.py            # 状态读写工具
-|   |-- trade_state.json            # 当前持仓状态（gitignored）
-|   |-- trade_journal.jsonl         # 交易日志（gitignored）
+|   |-- trade_state.json            # skill 读写持仓状态（gitignored）
+|   |-- trade_journal.jsonl         # skill 追加交易日志（gitignored）
 |
-|-- schemas/                        # 数据格式示例
-|   |-- snapshot-sample.json
-|   |-- event-sample.json
-|   |-- trade-state-sample.json
-|
-|-- run.py                          # 服务启动入口
+|-- schemas/                        # 数据格式示例（供参考）
+|-- run.py                          # 数据服务启动入口
 |-- requirements.txt                # Python 依赖
 |-- .env.example                    # API Key 配置模板
+|-- .gitignore                      # 忽略运行时数据和密钥
 ```
 
-## 数据格式
+## 数据格式示例
 
-### latest_snapshot.json
+### latest_snapshot.json（market service 自动生成）
 
 ```json
 {
@@ -147,13 +197,10 @@ tsla-options-war-room-skill/
     "TSLA": {
       "last_price": 355.33,
       "change_pct": -0.64,
-      "intraday_high": 355.64,
-      "intraday_low": 352.14,
-      "trend_1m": "neutral",
       "trend_5m": "bullish",
       "trend_15m": "bearish",
-      "support": [352.14, 352.24, 352.39],
-      "resistance": [356.86, 356.39, 356.2],
+      "support": [352.14, 352.24],
+      "resistance": [356.86, 356.39],
       "vwap": 353.94,
       "atr_5m": 0.89,
       "rvol": 3.71
@@ -165,7 +212,13 @@ tsla-options-war-room-skill/
 }
 ```
 
-### trade_state.json
+### trade_state.json（skill 读写）
+
+```json
+{ "active_trade": null }
+```
+
+有持仓时：
 
 ```json
 {
@@ -182,17 +235,11 @@ tsla-options-war-room-skill/
 }
 ```
 
-空仓时 `active_trade` 为 `null`。
+## 自定义路径
 
-## Twelve Data API
+如果你没有把仓库 clone 到 `~/tsla-options-war-room-skill/`，需要修改 SKILL.md 中的数据路径。
 
-本项目使用 [Twelve Data](https://twelvedata.com/) 作为市场数据源。
-
-免费版支持：
-- WebSocket 实时价格（1 连接）
-- REST API（800 请求/天，8 请求/分钟）
-
-注册后在 Dashboard 获取 API Key，填入 `.env` 文件即可。
+打开 `~/.claude/skills/tsla-options-war-room/SKILL.md`，找到"数据读取"部分，把路径改成你的实际位置。
 
 ## 注意事项
 
@@ -200,3 +247,4 @@ tsla-options-war-room-skill/
 - 期权交易有重大亏损风险，请在充分了解风险后谨慎操作
 - 系统的分析基于技术面数据，不考虑基本面和突发事件
 - 建议在模拟账户中测试后再用于实盘
+- Twelve Data 免费版有请求限制（800/天，8/分钟），正常使用足够
