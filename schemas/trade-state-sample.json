@@ -1,0 +1,17 @@
+{
+  "_doc": "active_trade 为 null 表示空仓（Entry Mode），有值表示持仓（Management Mode）",
+  "active_trade": {
+    "symbol": "TSLA",
+    "side": "PUT",
+    "strike": 365,
+    "expiry": "2026-04-09",
+    "opened_at": "2026-03-20T10:12:00-07:00",
+    "contracts": 1,
+    "avg_cost": 9.8,
+    "thesis": "TSLA 反弹到阻力下转弱，预期继续下探 380 / 372",
+    "invalidation": "TSLA 强收复 385 且 QQQ 同步转强",
+    "base_profit_target_pct": "20-35%",
+    "strong_trend_target_pct": "40-70%",
+    "time_review_due": "2026-03-24"
+  }
+}

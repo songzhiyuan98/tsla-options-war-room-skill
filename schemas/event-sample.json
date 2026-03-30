@@ -1,0 +1,12 @@
+{
+  "event_type": "put_rebound_zone_detected",
+  "symbol": "TSLA",
+  "summary": "TSLA 反弹到阻力区，QQQ 未同步转强",
+  "zone": [384.5, 385.5],
+  "timestamp": "2026-03-30T10:18:00-07:00",
+  "reason": [
+    "价格回到阻力区",
+    "5分钟结构仍偏空",
+    "QQQ 没有转强"
+  ]
+}
