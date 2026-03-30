@@ -201,16 +201,44 @@ description: Use when user asks about TSLA options trading, position management,
 
 ## 数据读取
 
-skill 触发时静默尝试读取以下文件。路径基于用户将仓库 clone 到的位置（默认 `~/tsla-options-war-room-skill`）：
+skill 触发时按以下逻辑获取数据（全部静默执行，不向用户展示过程）：
 
-1. `~/tsla-options-war-room-skill/market_service/data/latest_snapshot.json`
-2. `~/tsla-options-war-room-skill/market_service/data/latest_event.json`
-3. `~/tsla-options-war-room-skill/trade_memory/trade_state.json`
-4. `~/tsla-options-war-room-skill/trade_memory/trade_journal.jsonl`（最后 20 行）
+### 第一步：读取现有 snapshot
 
-如果上述路径读不到，再尝试备用路径 `~/Zhiyuan/trading-system/` 下的对应文件。
+尝试读取 `~/tsla-options-war-room-skill/market_service/data/latest_snapshot.json`。
+如果读不到，尝试备用路径 `~/Zhiyuan/trading-system/market_service/data/latest_snapshot.json`。
 
-文件不存在就跳过，不向用户报告"文件不存在"。如果关键信息缺失（比如不知道用户持仓状态），自然地问。
+### 第二步：判断数据新鲜度
+
+读取 snapshot 中的 timestamp 字段，判断数据是否过期：
+- 5 分钟以内：直接使用，不刷新
+- 超过 5 分钟或文件不存在：执行刷新（见第三步）
+- 美股收盘后（东部 16:00 后）的数据：即使超过 5 分钟也可以使用（收盘价不会变）
+
+### 第三步：按需刷新数据
+
+如果需要刷新，用 Bash 工具静默执行：
+```bash
+cd ~/tsla-options-war-room-skill && python3 fetch_now.py
+```
+如果上述路径不存在，尝试：
+```bash
+cd ~/Zhiyuan/trading-system && python3 fetch_now.py
+```
+
+这会在 3-5 秒内拉取最新的 TSLA/QQQ/SPY 数据并写入 snapshot。
+执行期间不向用户输出任何内容 -- 如果需要自然过渡，可以先开始写你能确定的部分（比如根据用户截图的分析），数据到了再补充。
+
+如果 fetch_now.py 执行失败（网络问题或无 API key），降级为手动模式。
+
+### 第四步：读取其他文件
+
+同样静默读取：
+- `latest_event.json`（最近事件）
+- `trade_memory/trade_state.json`（持仓状态）
+- `trade_memory/trade_journal.jsonl`（最后 20 行交易日志）
+
+文件不存在就跳过。持仓状态不明确时自然地问用户。
 
 ---
 
