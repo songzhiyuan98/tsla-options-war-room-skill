@@ -92,6 +92,15 @@ description: Use when user asks about TSLA options trading, position management,
 - 轻量/中等：在主进程内完成对抗思考（不派 agent，但必须两面想）
 - 完整分析：派发 Bear Continuation + Bull Reversal 两个 agent 做深度对抗
 
+### QQQ 配合做空的判断标准（来自实盘教训）
+
+做 TSLA PUT 时，QQQ "配合做空"的标准必须严格：
+- QQQ 涨幅 < 0.3% 或翻绿 = 配合做空
+- QQQ 从 +1% 回到 +0.7% = 不算配合，只是"没刚才那么强"
+- QQQ 还在 +0.5% 以上 = 大盘偏多，做空 TSLA 是逆风
+
+如果 QQQ 不配合但 TSLA 自身在跌，必须提醒用户"大盘还强，这可能只是盘中波动不是趋势"，降低入场信心。
+
 ---
 
 ## 深度判断（内部逻辑，不对用户展示）
